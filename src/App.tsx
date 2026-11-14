@@ -1,4 +1,5 @@
 import { useEffect, useMemo, useState } from 'react';
+import type { KeyboardEvent } from 'react';
 import { lessons, tasksCount } from './course';
 import type { Task } from './course';
 import { checkTask, previewHtml } from './runner';
@@ -71,7 +72,7 @@ function App() {
     } finally { setChecking(false); }
   }
   function next() { if (index < allTasks.length - 1) choose(allTasks[index + 1].id); }
-  function onEditorKeyDown(e: React.KeyboardEvent<HTMLTextAreaElement>) {
+  function onEditorKeyDown(e: KeyboardEvent<HTMLTextAreaElement>) {
     if (e.key !== 'Tab') return;
     e.preventDefault();
     const el = e.currentTarget;
