@@ -1,88 +1,137 @@
-export type Test = { name: string; expression?: string; expected: unknown };
+
+import materialCatalog from './materials.json';
+import labFixtures from './lab-fixtures.json';
+
+export type Test = { name: string; expression?: string; expected: unknown; output?: boolean };
 export type Mode = 'console' | 'function' | 'dom';
-export type Task = { id: string; title: string; goal: string; mode: Mode; starter: string; hints: string[]; tests: Test[]; html: string; minutes: number };
-export type Lesson = { id: string; day: number; number: number; title: string; subtitle: string; source: string; concepts: string[]; example: string; tasks: Task[] };
+export type Task = { id: string; title: string; goal: string; mode: Mode; starter: string; hints: string[]; tests: Test[]; html: string };
+export type Material = { id: string; title: string; section: string; number: number; project?: boolean };
+export type Lesson = { day: number; number: number; title: string; concepts: string[]; materials: Material[]; core: string[]; tasks: Task[] };
 
-const C = (id: string, title: string, goal: string, starter: string, expected: string, hints: string[]): Task => ({
-  id, title, goal, starter, hints, mode: 'console', html: '', minutes: 15, tests: [{ name: 'Вывод в консоль', expected: [expected] }]
-});
-const F = (id: string, title: string, goal: string, starter: string, tests: Test[], hints: string[]): Task => ({
-  id, title, goal, starter, hints, tests, mode: 'function', html: '', minutes: 15
-});
-const D = (id: string, title: string, goal: string, starter: string, html: string, tests: Test[], hints: string[]): Task => ({
-  id, title, goal, starter, html, tests, hints, mode: 'dom', minutes: 15
-});
 const X = (name: string, expression: string, expected: unknown): Test => ({ name, expression, expected });
+const output = (...expected: unknown[]): Test => ({ name: 'Вывод в консоль', expected, output: true });
+const exercises = (id: string, goal: string, starter: string, hints: string[], tests: Test[]): Task => ({
+  id, goal, starter, hints, tests, title: '', mode: 'console', html: '',
+});
+function lab(id: keyof typeof labFixtures, goal: string, hints: string[], tests: Test[]): Task {
+  return { id, title: '', goal, hints, tests, mode: 'dom', ...labFixtures[id] };
+}
+function schedule(number: keyof typeof materialCatalog.lessons, title: string, concepts: string[], core: string[], tasks: Task[]): Lesson {
+  const materials: Material[] = materialCatalog.lessons[number];
+  return {
+    day: Math.ceil(Number(number) / 3), number: Number(number), title, concepts, materials, core,
+    tasks: tasks.map(task => ({ ...task, title: materials.find(material => material.id === task.id)!.title })),
+  };
+}
+const projectMessage = 'Проект можно выполнить';
+const pages = "let mode = 'pageCopy';\nlet pageNumber = 5;\nlet copyCount = 7;\nlet totalPages = 6;\nif (mode === 'pageCopy') {\n  for (let copies = 1; copies <= copyCount; copies++) console.log(pageNumber);\n}\n";
+const visitData = 'let usersByDay = [812, 1360, 657, 1247];';
+const productCards = 'Array.from(document.querySelectorAll(".products > .product"))';
+const clickOpen = 'document.querySelector(".button-open").click();';
+const isOpen = 'document.querySelector(".modal").classList.contains("modal--show")';
 
-const shop = '<main class="shop"><span class="eyebrow">TOP / STORE</span><h2>Товары недели</h2><p class="status">Магазин готов к открытию</p><ul id="products" class="products"><li class="product" data-available="true">Клавиатура</li><li class="product" data-available="false">Наушники</li><li class="product" data-available="true" data-special="true">Монитор</li></ul></main>';
-const empty = '<main class="shop"><span class="eyebrow">TOP / STORE</span><h2>Новая коллекция</h2><ul id="products" class="products"></ul></main>';
-const toggle = '<main class="shop"><h2>Карточка товара</h2><button id="toggle">Детали</button><p id="panel" class="is-hidden">Сделано с JavaScript ✨</p></main>';
-const counter = '<main class="shop"><h2>Корзина</h2><p>В корзине: <strong id="count">0</strong></p><button id="add">Добавить товар</button></main>';
-const finale = '<main class="shop"><span class="eyebrow">TOP / STORE</span><h2>Мой магазин</h2><p>В корзине: <strong id="count">0</strong></p><ul id="products" class="products"></ul></main>';
-
-export const lessons: Lesson[] = [
-  { id:'l1', day:1, number:1, title:'Первый код', subtitle:'Консоль и переменные', source:'Основы языка: 1. Вывод в консоль и комментарии; 2. Типы данных; 3. Переменные', concepts:['console.log()', 'let и const', 'number, string, boolean'], example:"const name = 'TOP';\nconsole.log('Привет, ' + name + '!');",
-    tasks:[
-      C('t1-1','Привет, TOP!','Выведи точную строку «Привет, TOP!» в консоль.','// Выведи сообщение в консоль\n','Привет, TOP!',['Вывод в консоль — console.log(...)','Не забудь кавычки вокруг строки.']),
-      C('t1-2','Переменная','Создай переменную language со значением JavaScript и выведи её.','// Создай const language\n// Выведи значение\n','JavaScript',['const language = ...','Передай в console.log имя переменной без кавычек.']),
-      C('t1-3','Профиль ученика','Создай name = "Студент" и lessons = 9. Выведи «Студент: 9 занятий».','// Объяви две переменные\n// Сформируй строку\n','Студент: 9 занятий',['Для соединения строк используй +','Число автоматически преобразуется в строку при конкатенации.'])
-    ]
-  },
-  { id:'l2', day:1, number:2, title:'Числа и строки', subtitle:'Вычисляем и объединяем', source:'Основы языка: 5. Операции, операторы и операнды; 6. Конкатенация; 11. String и Number', concepts:['+, -, *, /', 'конкатенация', 'преобразования типов'], example:'const price = 850;\nconst quantity = 3;\nconsole.log(price * quantity);',
-    tasks:[
-      C('t2-1','Стоимость покупки','Товар стоит 850 ₽. Покупаем 3 штуки. Выведи общую стоимость числом.','const price = 850;\nconst amount = 3;\n// Вычисли сумму\n','2550',['Используй оператор умножения *','Выведи price * amount.']),
-      C('t2-2','Скидка','Цена 1000 ₽, скидка 15%. Выведи итоговую стоимость.','const price = 1000;\nconst discount = 15;\n// Итоговая цена\n','850',['Найди размер скидки: price * discount / 100','Вычти полученное значение из price.']),
-      C('t2-3','Название бренда','Соедини слова TOP и Academy через пробел.','const a = "TOP";\nconst b = "Academy";\n// Выведи одну строку\n','TOP Academy',['Используй оператор +','Между переменными добавь строку с пробелом " ".'])
-    ]
-  },
-  { id:'l3', day:1, number:3, title:'Условия и решения', subtitle:'if, else и логика', source:'Основы языка: 7–15, 16. Время прогулки', concepts:['if / else', 'сравнения', 'логические операторы'], example:'function isAdult(age) {\n  return age >= 18;\n}',
-    tasks:[
-      F('t3-1','Совершеннолетие','Функция isAdult(age) возвращает true для возраста от 18 лет, иначе false.','function isAdult(age) {\n  // Верни результат сравнения\n}\n',[X('Ровно 18','isAdult(18)',true),X('17 лет','isAdult(17)',false),X('30 лет','isAdult(30)',true)],['Сравни age с 18','return age >= 18;']),
-      F('t3-2','Дождь и прогулка','canWalk(isRaining) возвращает false, если идёт дождь, и true, если нет.','function canWalk(isRaining) {\n  // Верни логическое значение\n}\n',[X('Идёт дождь','canWalk(true)',false),X('Сухо','canWalk(false)',true)],['Используй оператор отрицания !','return !isRaining;']),
-      F('t3-3','Время прогулки','Адаптация задания «Время прогулки»: дождь → 0; 10–14 °C → 30; 15–24 °C → 40; 25–35 °C → 20 минут; вне диапазонов → 0. Создай walkMinutes(temperature, isRaining).','function walkMinutes(temperature, isRaining) {\n  // Сначала проверь дождь\n  // Потом диапазоны температур\n}\n',[X('Дождь','walkMinutes(20,true)',0),X('10 °C','walkMinutes(10,false)',30),X('14 °C','walkMinutes(14,false)',30),X('15 °C','walkMinutes(15,false)',40),X('24 °C','walkMinutes(24,false)',40),X('25 °C','walkMinutes(25,false)',20),X('35 °C','walkMinutes(35,false)',20),X('Ниже диапазона','walkMinutes(5,false)',0)],['Начни с if (isRaining) return 0;','Используй && для проверки диапазонов. В конце return 0.'])
-    ]
-  },
-  { id:'l4', day:2, number:4, title:'Повторяющиеся действия', subtitle:'Циклы for и while', source:'Основы языка: 17. Циклы; 18. Цикл for; 19. Чётные и нечётные числа', concepts:['for', 'while', 'счётчик'], example:'for (let i = 1; i <= 3; i++) {\n  console.log(i);\n}',
-    tasks:[
-      F('t4-1','От одного до N','Функция range(n) возвращает массив [1, 2, ..., n].','function range(n) {\n  const numbers = [];\n  // Добавь числа через цикл\n  return numbers;\n}\n',[X('Три числа','range(3)',[1,2,3]),X('Одно число','range(1)',[1]),X('Ноль','range(0)',[])],['Для добавления элемента используй push','Цикл for (let i = 1; i <= n; i++).']),
-      F('t4-2','Сумма чисел','Функция sumTo(n) возвращает сумму от 1 до n.','function sumTo(n) {\n  let sum = 0;\n  // Накопи сумму\n  return sum;\n}\n',[X('Сумма до 3','sumTo(3)',6),X('Сумма до 10','sumTo(10)',55),X('Ноль','sumTo(0)',0)],['Начни с let sum = 0','Внутри цикла делай sum += i;']),
-      F('t4-3','Чётные числа','Функция evens(n) возвращает все чётные числа от 1 до n.','function evens(n) {\n  const result = [];\n  // Найди чётные числа\n  return result;\n}\n',[X('До восьми','evens(8)',[2,4,6,8]),X('До пяти','evens(5)',[2,4]),X('До одного','evens(1)',[])],['Чётность проверяется через остаток %','if (i % 2 === 0) result.push(i);'])
-    ]
-  },
-  { id:'l5', day:2, number:5, title:'Массивы', subtitle:'Списки и поиск', source:'Базовые структуры данных: Массивы, уроки 1–15', concepts:['индексы', 'length', 'перебор массива'], example:'const prices = [100, 250, 650];\nconsole.log(prices[0]);\nconsole.log(prices.length);',
-    tasks:[
-      F('t5-1','Первый товар','firstItem(items) возвращает первый элемент массива, а для пустого — null.','function firstItem(items) {\n  // Проверь длину\n}\n',[X('Первый товар','firstItem(["чай","кофе"])','чай'),X('Одно число','firstItem([7])',7),X('Пустой массив','firstItem([])',null)],['У массива есть свойство length','Если items.length === 0, верни null.']),
-      F('t5-2','Сумма корзины','cartTotal(prices) возвращает сумму всех чисел массива.','function cartTotal(prices) {\n  let sum = 0;\n  // Перебери prices\n  return sum;\n}\n',[X('Три товара','cartTotal([100,250,650])',1000),X('Пустая корзина','cartTotal([])',0),X('Один товар','cartTotal([75])',75)],['Можно использовать for...of','Для каждого price прибавляй его к sum.']),
-      F('t5-3','Самая высокая цена','maxPrice(prices) возвращает максимум, а для пустого массива — null.','function maxPrice(prices) {\n  // Учти пустой список\n}\n',[X('Обычные цены','maxPrice([100,580,250])',580),X('Отрицательные','maxPrice([-7,-2,-10])',-2),X('Пустой массив','maxPrice([])',null)],['Не начинай максимум с 0 — цены могут быть отрицательными','Если массив непустой, начни с prices[0].'])
-    ]
-  },
-  { id:'l6', day:2, number:6, title:'Функции и объекты', subtitle:'Собираем данные о товарах', source:'Базовые структуры данных: Функции 1–8; Объекты 1–8', concepts:['function', 'return', 'свойства объекта'], example:'function title(product) {\n  return product.name + ": " + product.price;\n}',
-    tasks:[
-      F('t6-1','Цена со скидкой','priceWithDiscount(price, percent) возвращает цену после скидки.','function priceWithDiscount(price, percent) {\n  // Рассчитай итоговую цену\n}\n',[X('10 процентов','priceWithDiscount(500,10)',450),X('Без скидки','priceWithDiscount(100,0)',100),X('50 процентов','priceWithDiscount(80,50)',40)],['Скидка — это доля исходной цены','return price - price * percent / 100;']),
-      F('t6-2','Описание товара','productLabel(product) возвращает строку «Название — Цена ₽».','function productLabel(product) {\n  // Используй product.name и product.price\n}\n',[X('Ноутбук','productLabel({name:"Ноутбук",price:30000})','Ноутбук — 30000 ₽'),X('Мышь','productLabel({name:"Мышь",price:900})','Мышь — 900 ₽')],['Читай свойства через точку','Между названием и ценой стоит длинное тире.']),
-      F('t6-3','Остатки на складе','totalStock(products) возвращает сумму свойства stock у всех объектов.','function totalStock(products) {\n  let sum = 0;\n  // Пройди по массиву объектов\n  return sum;\n}\n',[X('Два товара','totalStock([{stock:3},{stock:7}])',10),X('Пустой список','totalStock([])',0),X('Один товар','totalStock([{stock:2}])',2)],['Каждый product имеет свойство stock','sum += product.stock;'])
-    ]
-  },
-  { id:'l7', day:3, number:7, title:'Встреча с DOM', subtitle:'Находим и меняем элементы', source:'JavaScript в браузере: уроки 1–5, лабораторные задания 1–5 (адаптация)', concepts:['querySelector', 'textContent', 'classList'], example:"const status = document.querySelector('.status');\nstatus.textContent = 'Магазин открыт';",
-    tasks:[
-      D('t7-1','Магазин открыт','Найди элемент .status и измени текст на «Магазин открыт».',"const status = document.querySelector('.status');\n// Измени текст\n",shop,[X('Статус изменён','document.querySelector(".status").textContent.trim()','Магазин открыт')],['textContent отвечает за текст','status.textContent = "Магазин открыт";']),
-      D('t7-2','Товары в наличии','Добавь класс product--available ко всем li.product с data-available="true".','// Найди все доступные товары\n// Добавь класс каждому из них\n',shop,[X('Два доступных','document.querySelectorAll(".product--available").length',2),X('Недоступный не помечен','!document.querySelectorAll(".product")[1].classList.contains("product--available")',true)],['Используй document.querySelectorAll','Для каждого элемента вызови classList.add("product--available").']),
-      D('t7-3','Спецпредложение','Добавь product--special товару с data-special="true".','// Найди товар со специальным предложением\n',shop,[X('Один акционный','document.querySelectorAll(".product--special").length',1),X('Это монитор','document.querySelector(".product--special").textContent.trim()','Монитор')],['Используй селектор [data-special="true"]','classList.add("product--special")'])
-    ]
-  },
-  { id:'l8', day:3, number:8, title:'Создаём карточки', subtitle:'Генерация каталога из данных', source:'JavaScript в браузере: уроки 10–21 и соответствующие лабораторные (адаптация)', concepts:['createElement', 'append', 'массив объектов'], example:"const li = document.createElement('li');\nli.textContent = 'Ноутбук';\ndocument.querySelector('#products').append(li);",
-    tasks:[
-      D('t8-1','Первая карточка','Создай li с классом product и текстом «Ноутбук», добавь в #products.','// Создай li и добавь его в список\n',empty,[X('Одна карточка','document.querySelectorAll("#products li.product").length',1),X('Название','document.querySelector("#products li").textContent.trim()','Ноутбук')],['Создай li через document.createElement("li")','Добавь класс, текст, затем append.']),
-      D('t8-2','Каталог из данных','Используя cardsData, создай три li.product с названиями товаров.','const cardsData = [{name:"Ноутбук"},{name:"Мышь"},{name:"Наушники"}];\n// Перебери массив и создай карточки\n',empty,[X('Три карточки','document.querySelectorAll("#products li.product").length',3),X('Первый','document.querySelector("#products li:first-child").textContent.trim()','Ноутбук'),X('Последний','document.querySelector("#products li:last-child").textContent.trim()','Наушники')],['Сделай for...of по cardsData','Внутри цикла создай li, назначь className и textContent.']),
-      D('t8-3','Акции в каталоге','Создай карточки из cardsData. Товару с isSpecial: true добавь класс product--special.','const cardsData = [{name:"Ноутбук",isSpecial:false},{name:"Мышь",isSpecial:true},{name:"Наушники",isSpecial:false}];\n// Генерируй карточки и выдели акцию\n',empty,[X('Всего карточек','document.querySelectorAll("#products li.product").length',3),X('Одна акция','document.querySelectorAll("#products li.product--special").length',1),X('Акция на мышь','document.querySelector("#products .product--special").textContent.trim()','Мышь')],['Проверяй product.isSpecial','Если true, добавляй product--special.'])
-    ]
-  },
-  { id:'l9', day:3, number:9, title:'События и финальный проект', subtitle:'Делаем магазин интерактивным', source:'JavaScript в браузере: Знакомство с событиями 1–9; адаптированная итоговая практика', concepts:['addEventListener', 'click', 'изменение состояния'], example:"document.querySelector('button').addEventListener('click', () => {\n  console.log('Нажали!');\n});",
-    tasks:[
-      D('t9-1','Показать детали','По клику на #toggle переключай класс is-hidden у #panel.','// Подпиши кнопку на событие click\n',toggle,[X('После одного клика видно','(()=>{document.querySelector("#toggle").click();return !document.querySelector("#panel").classList.contains("is-hidden")})()',true),X('После двух кликов скрыто','(()=>{document.querySelector("#toggle").click();document.querySelector("#toggle").click();return document.querySelector("#panel").classList.contains("is-hidden")})()',true)],['Добавь обработчик через addEventListener("click",...)','classList.toggle("is-hidden") переключает класс.']),
-      D('t9-2','Счётчик покупок','Каждый клик на #add увеличивает число в #count на 1.','// Найди кнопку и счётчик\n// Добавь обработчик клика\n',counter,[X('Один клик','(()=>{document.querySelector("#add").click();return document.querySelector("#count").textContent.trim()})()','1'),X('Три клика','(()=>{for(let i=0;i<3;i++)document.querySelector("#add").click();return document.querySelector("#count").textContent.trim()})()','3')],['Заведи переменную count = 0','В обработчике увеличивай count и обновляй textContent.']),
-      D('t9-3','Мой магазин','Итог: создай три li.product из cardsData. В каждой карточке должна быть button.buy. По клику увеличивай число в #count.','const cardsData = [{name:"Ноутбук"},{name:"Мышь"},{name:"Наушники"}];\n// 1. Создай карточки\n// 2. Добавь кнопку покупки\n// 3. Реализуй счётчик\n',finale,[X('Три карточки','document.querySelectorAll("#products li.product").length',3),X('Три кнопки','document.querySelectorAll("#products button.buy").length',3),X('Две покупки','(()=>{const bs=document.querySelectorAll("#products button.buy");bs[0].click();bs[1].click();return document.querySelector("#count").textContent.trim()})()','2'),X('Названия','Array.from(document.querySelectorAll("#products li.product")).map(li=>li.textContent.includes("Ноутбук")||li.textContent.includes("Мышь")||li.textContent.includes("Наушники")).every(Boolean)',true)],['Начни с генерации карточек и кнопок','Создай общий счётчик, подключи обработчик к каждой кнопке.'])
-    ]
-  }
+export const lessons = [
+  schedule('1', 'Консоль, типы и переменные', ['console.log()', 'комментарии', 'типы данных', 'let'], ['1-1', '1-2', '1-3'], [
+    exercises('1-1', 'Подпиши вывод программы и выведи по порядку время в часах и минутах.', '// Считаем время\n3 + 2.5;\n(3 + 2.5) * 60;\n', [
+      'Перед каждым результатом выведи подпись из условия.', 'Для минут умножь сумму часов на 60.',
+    ], [output('Время в часах:', 5.5, 'Время в минутах:', 330)]),
+    exercises('1-2', "Выведи массив [50, 320, 480] и объект {media: 'Twitter', time: 5} отдельными вызовами console.log.", '', [
+      'Массив записывается в квадратных скобках.', 'Передай в консоль сам объект в фигурных скобках.',
+    ], [output([50, 320, 480], {media: 'Twitter', time: 5})]),
+    exercises('1-3', 'Объяви переменную timeInHours без начального значения и выведи её в консоль.', '', [
+      'Используй let, чтобы объявить переменную без значения.', 'В console.log передай имя переменной.',
+    ], [output(undefined), X('Переменная объявлена', 'timeInHours === undefined', true)]),
+  ]),
+  schedule('2', 'Операции, строки и преобразование типов', ['арифметика', 'конкатенация', 'String()', 'Number()'], ['1-5', '1-6', '1-11'], [
+    exercises('1-5', 'Выведи сумму времени за два дня, разницу firstDay − secondDay и долю firstDay от суток в процентах.', 'let firstDay = 3;\nlet secondDay = 2.5;\n', [
+      'Первые два результата получаются сложением и вычитанием.', 'Доля суток в процентах: firstDay / 24 * 100.',
+    ], [output(5.5, 0.5, 12.5)]),
+    exercises('1-6', 'Улучши вывод расчёта времени в соцсетях. Добавь к двум числам пояснения из условия.', "let mediaInTwoDays = 3 + 2.5;\nlet timeInMinutes = mediaInTwoDays * 60;\nconsole.log(timeInMinutes);\nlet minutesLeftPerDay = (420 - timeInMinutes) / 5;\nconsole.log(minutesLeftPerDay);\n", [
+      'Соедини текст и значения переменных оператором +.', 'Сохрани пробелы и точки из условия.',
+    ], [output('За два дня вы провели в соцсетях 330 минут.', 'В оставшиеся дни вы можете сидеть в соцсетях по 18 минут в день.')]),
+    exercises('1-11', 'Сделай первое задание из документа. Используй строгое сравнение и преобразуй number в строку.', "let string = '123';\nlet number = 123;\nif (string === number) {\n  console.log('Сравнение заработало');\n} else {\n  console.log('Не могу сравнить');\n}\n", [
+      'Строгое равенство записывается как ===.', 'Вызови String(number) перед сравнением.',
+    ], [output('Сравнение заработало'), X('Типы исходных значений', '[typeof string, typeof number]', ['string','number'])]),
+  ]),
+  schedule('3', 'Условия, сравнения и логика', ['if и else', 'операторы сравнения', 'вложенные условия', '&& и ||'], ['1-7', '1-8', '1-9', '1-12', '1-13', '1-16'], [
+    exercises('1-7', 'Сравни walkTime и optimalTime через if. Установи walkTime равным 90 для финальной проверки.', 'let optimalTime = 80;\nlet walkTime = 60;\n', [
+      'Условие проверяет, что walkTime > optimalTime.', 'Внутри if выведи «Прогулка достаточно длинная».',
+    ], [output('Прогулка достаточно длинная'), X('Время прогулки', 'walkTime', 90)]),
+    exercises('1-9', "Выведи результаты трёх сравнений по порядку: true <= 0, '2' > '1', 'кекс' < 'КЕКС'.", '', [
+      'Каждое сравнение передай отдельному вызову console.log.', 'Проверь, что в консоли выводятся логические значения.',
+    ], [output(false, true, false)]),
+    exercises('1-12', 'Добавь два вложенных if. Измени message, только если хватает разработчиков и доступна технология. Установи techAvailable в true.', "let enoughDevelopers = true;\nlet techAvailable = false;\nlet message = 'Проект нельзя выполнить';\nconsole.log(message);\n", [
+      'Во внешнем if проверь enoughDevelopers.', 'Внутри второго if присвой message строку «Проект можно выполнить».',
+    ], [output(projectMessage), X('Сообщение', 'message', projectMessage)]),
+  ]),
+  schedule('4', 'Циклы и режимы печати', ['цикл for', 'счётчик', 'шаг цикла', 'режимы печати'], ['1-17', '1-18', '1-19', '1-20', '1-21', '1-22'], [
+    exercises('1-17', 'Замени повторяющиеся команды печати одним циклом и увеличь количество копий до пяти.', 'let page = 7;\nlet count = 3;\nconsole.log(page);\nconsole.log(page);\nconsole.log(page);\n', [
+      'В теле цикла оставь один console.log(page).', 'Начни счётчик с нуля и проверяй i < count.',
+    ], [output(7, 7, 7, 7, 7), X('Количество копий', 'count', 5)]),
+    exercises('1-19', 'Измени шаг счётчика и выведи чётные номера страниц при totalPages = 9.', 'let totalPages = 7;\nfor (let page = 1; page <= totalPages; page++) {\n  console.log(page);\n}\n', [
+      'Чётные номера начинаются с двух.', 'Увеличивай page на два после каждой итерации.',
+    ], [output(2, 4, 6, 8), X('Всего страниц', 'totalPages', 9)]),
+    exercises('1-22', 'Добавь режим reverse, который печатает все страницы от последней до первой. Запусти этот режим.', pages + "if (mode === 'document') {\n  for (let page = 1; page <= totalPages; page++) console.log(page);\n}\n", [
+      'Добавь проверку mode === "reverse" после двух имеющихся.', 'Начни reversePage с totalPages и уменьшай до единицы включительно.',
+    ], [output(6, 5, 4, 3, 2, 1), X('Режим печати', 'mode', 'reverse')]),
+  ]),
+  schedule('5', 'Массивы и обработка данных', ['индексы', 'length', 'перебор', 'суммирование'], ['2-1-5', '2-1-6', '2-1-7', '2-1-9', '2-1-10', '2-1-11'], [
+    exercises('2-1-7', 'Получи из массива посещаемость первого и четвёртого дня. Сохрани значения в firstDayUsers и fourthDayUsers и выведи их по порядку.', visitData, [
+      'Первый индекс массива — 0.', 'Четвёртому элементу соответствует индекс 3.',
+    ], [output(812, 1247), X('Значения переменных', '[firstDayUsers, fourthDayUsers]', [812,1247])]),
+    exercises('2-1-9', 'Добавь в конец массива 1000. Выведи длину массива, последний элемент и третий с конца. Индексы рассчитай через length.', visitData, [
+      'Индекс последнего элемента на единицу меньше длины.', 'Индекс третьего элемента с конца равен usersByDay.length − 3.',
+    ], [output(5, 1000, 657), X('Обновлённый массив', 'usersByDay', [812,1360,657,1247,1000])]),
+    exercises('2-1-11', 'Добавь totalUsers и накопи в ней посещаемость за все дни. Выведи сумму после цикла.', 'let expectedUsers = 1000;\n' + visitData + "\nconsole.log(usersByDay, expectedUsers);\nfor (let i = 0; i < usersByDay.length; i++) {\n  console.log(usersByDay[i]);\n}\nlet averageUsers = 0;\nconsole.log('Средняя посещаемость: ' + averageUsers);\n", [
+      'Задай totalUsers ноль перед циклом.', 'Вместо вывода элемента прибавляй usersByDay[i] к totalUsers.',
+    ], [output([[812,1360,657,1247],1000], 4076, 'Средняя посещаемость: 0'), X('Накопленная сумма', 'totalUsers', 4076)]),
+  ]),
+  schedule('6', 'Функции и объекты', ['параметры', 'аргументы', 'return', 'свойства объектов'], ['2-2-4', '2-2-5', '2-2-6', '2-2-7', '2-2-8', '2-3-4', '2-3-5'], [
+    exercises('2-2-7', "Вызови showGreeting четыре раза: без аргументов, с 5, с 5 и 'Кекс', затем с 'Кекс' и 5.", "let showGreeting = function (name, age) {\n  console.log('Привет! Меня зовут ' + name + '. Мне ' + age + ' лет.');\n};\n", [
+      'Вызов без аргументов записывается как showGreeting().', 'Сравни вывод третьего и четвёртого вызова.',
+    ], [output('Привет! Меня зовут undefined. Мне undefined лет.', 'Привет! Меня зовут 5. Мне undefined лет.', 'Привет! Меня зовут 5. Мне Кекс лет.', 'Привет! Меня зовут Кекс. Мне 5 лет.')]),
+    exercises('2-2-8', 'Округли количество миль вниз, верни его из calculateMiles и выведи два сообщения из условия.', "let calculateMiles = function (distance) {\n  let percent = 0.25;\n  if (distance > 10500) percent = 0.35;\n  let miles = distance * percent;\n  console.log('За полёт получим ' + miles + ' миль');\n};\ncalculateMiles(4125);\ncalculateMiles(11000);\n", [
+      'Округли результат с Math.floor и верни miles через return.', 'Добавь к сообщениям результаты calculateMiles(4125) и calculateMiles(11000).',
+    ], [output('За перелёт в Иркутск получим 1031 миль', 'За перелёт на Камчатку получим 3849 миль'), X('Возвращённое число', 'calculateMiles(12000)', 4200)]),
+    exercises('2-3-4', "Создай объекты firstCat и secondCat. Имена игроков — «Кекс» и «Рудольф», начальные очки обоих — 0.", '', [
+      'Объект записывается в фигурных скобках.', 'Для каждого игрока укажи свойства name и points.',
+    ], [X('Первый игрок', 'firstCat', {name:'Кекс', points:0}), X('Второй игрок', 'secondCat', {name:'Рудольф', points:0})]),
+  ]),
+  schedule('7', 'Поиск элементов и обновление DOM', ['querySelector', 'querySelectorAll', 'classList', 'перебор коллекции'], ['3-1-2', '3-1-3', '3-1-4', '3-1-5', '3-1-6', '3-1-7'], [
+    lab('3-1-3', 'Вместо вывода элементов назначь второму товару product--special, а последнему — product--unavailable.', [
+      'DOM-элементы найдены в стартовом коде.', 'Замени console.log на вызовы classList.add с нужными классами.',
+    ], [X('Спецпредложение', productCards + '.map(el => el.classList.contains("product--special"))', [false,true,false,false,false]), X('Нет в наличии', productCards + '.map(el => el.classList.contains("product--unavailable"))', [false,false,false,false,true])]),
+    lab('3-1-5', 'Перебери коллекцию elements. Каждый элемент выведи в консоль и добавь ему класс product--available.', [
+      'Счётчик идёт от 0 до elements.length − 1.', 'Получи elements[i] и вызови у него classList.add.',
+    ], [X('Все пять товаров отмечены', 'document.querySelectorAll(".products > .product.product--available").length', 5)]),
+    lab('3-1-6', 'Получи products[i] внутри цикла. Назначь класс наличия в зависимости от isAvailable.', [
+      'Начни с availabilityClass = "product--available".', 'Для товара не в наличии используй product--unavailable.',
+    ], [X('Товары в наличии', productCards + '.map(el => el.classList.contains("product--available"))', [true,false,true,true,false]), X('Товары отсутствуют', productCards + '.map(el => el.classList.contains("product--unavailable"))', [false,true,false,false,true])]),
+  ]),
+  schedule('8', 'Создание карточек товаров', ['children', 'createElement', 'textContent', 'appendChild'], ['3-1-10', '3-1-11', '3-1-12', '3-1-13', '3-1-15', '3-1-16'], [
+    lab('3-1-11', 'Создай li с классом product, добавь его в cardList через appendChild и выведи обновлённую коллекцию дочерних элементов.', [
+      'Создай listItem через document.createElement("li").', 'После добавления выведи cardList.children.',
+    ], [X('Карточка добавлена в конец', '(()=>{const items=document.querySelector(".products"); return [items.children.length,items.lastElementChild?.matches("li.product")]})()', [4,true])]),
+    lab('3-1-12', 'Добавь в listItem заголовок «Профессиональная селфи-палка» и цену «1000». Используй теги и классы из условия.', [
+      'Для заголовка создай h2.product__title.', 'Для цены создай p.product__price. Заполни оба через textContent.',
+    ], [X('Заголовок', 'document.querySelector(".products > li.product:last-child > h2.product__title")?.textContent', 'Профессиональная селфи-палка'), X('Цена', 'document.querySelector(".products > li.product:last-child > p.product__price")?.textContent', '1000')]),
+    lab('3-1-13', 'Объяви makeElement(tagName, className, text). Функция создаёт и возвращает элемент с указанным классом и необязательным текстом.', [
+      'Создай элемент через document.createElement(tagName).', 'Проверь наличие текста и верни элемент через return.',
+    ], [X('Элемент с текстом', '(()=>{const el=makeElement("p","product__price","1000"); return [el.tagName,el.className,el.textContent]})()', ['P','product__price','1000']), X('Элемент без текста', 'makeElement("li","product").textContent', '')]),
+  ]),
+  schedule('9', 'События и управление интерфейсом', ['обработчик click', 'preventDefault()', 'classList', 'keydown'], ['3-2-1', '3-2-2', '3-2-3', '3-2-4', '3-2-5', '3-2-6', '3-2-9'], [
+    lab('3-2-5', 'Замени вывод в консоль добавлением класса modal--show. Проверь, что «Показать контакты» открывает окно.', [
+      'Сохрани отмену стандартного действия ссылки.', 'Внутри обработчика добавь popup класс modal--show.',
+    ], [X('Сначала окно скрыто', isOpen, false), X('После клика окно открыто', '(()=>{' + clickOpen + 'return ' + isOpen + '})()', true)]),
+    lab('3-2-6', 'Найди кнопку button-close внутри popup. По клику на неё удали modal--show.', [
+      'Используй popup.querySelector(".button-close").', 'Для удаления класса используй classList.remove.',
+    ], [X('Открытие и закрытие мышью', '(()=>{' + clickOpen + 'const opened=' + isOpen + '; document.querySelector(".button-close").click(); return [opened,' + isOpen + ']})()', [true,false])]),
+    lab('3-2-9', 'Замени вывод сообщения в обработчике Escape на закрытие окна. Для ручной проверки поставь фокус в предпросмотр.', [
+      'Заменить нужно код внутри условия обработчика keydown.', 'Удали у popup класс modal--show. Можно проверять evt.key === "Escape".',
+    ], [X('Escape закрывает окно', '(()=>{' + clickOpen + 'const opened=' + isOpen + '; document.dispatchEvent(new KeyboardEvent("keydown", {key:"Escape", keyCode:27, bubbles:true})); return [opened,' + isOpen + ']})()', [true,false])]),
+  ]),
 ];
 export const tasksCount = lessons.reduce((sum, lesson) => sum + lesson.tasks.length, 0);
+export const overview = materialCatalog.overview;
+export const lessonMinutes = 90;
+export const dayMinutes = 3 * lessonMinutes;
